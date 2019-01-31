@@ -1,12 +1,29 @@
 #' Validate per
 #' 
-#' Checks whether a valid input of `per` is used and outputs the amount which yearly payments are divided by to get the desired rate. 
+#' Checks whether a valid input of `per` is used and outputs the amount which 
+#' yearly payments are divided by to get the desired rate. 
 #' 
 #' @param per How often are payments made? Can only take values 'year', 'fortnight', or 'quarter'.
-#' @param missing_per Is `per`` missing in the outer function? If so the defualt for that function will be used.
-#' @param .fortnights_per_yr What is the ratio of the fortnightly payment amount to the yearly payment amount? By default, 26. (Some payments expect 26; others expect 364/14.)
+#' @param missing_per Is `per` missing in the outer function? If so the default 
+#' for that function will be used. Essentially, you should always pass 
+#' \code{missing(per)} to this argument.
+#' @param .fortnights_per_yr What is the ratio of the fortnightly payment amount
+#'  to the yearly payment amount? By default, 26. 
+#'  (Some payments expect 26; others expect 364/14.)
 #' 
-#' @author Matthew Katzen
+#' @details For examples, see \code{\link{rent_assistance}} function code.
+#' @examples
+#' \dontrun{
+#' # Typical use-case
+#' # attach(asNamespace("grattan"))
+#' z <- function(per = "year") 52 / validate_per(per, missing(per))
+#' z()  # message
+#' z(per = "year")       # same, no message
+#' z(per = "fortnight")  # in fortnights
+#' z(per = "sidfh")      # error
+#' }
+#' 
+#' 
 
 validate_per <- function(per, missing_per, .fortnights_per_yr = 26) {
   if (missing_per) {

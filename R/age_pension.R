@@ -2,7 +2,7 @@
 #' 
 #' @param fortnightly_income,annual_income Income for means-testing purposes. Provide one but not both.
 #' @param has_partner (logical, default: \code{FALSE}) Does the individual have a partner?
-#' @param n_dependants How many dependants does sthe individual have? Default is zero.
+#' @param n_dependants How many dependants does the individual have? Default is zero.
 #' @param partner_fortnightly_income,partner_annual_income The partner's income. The sum of this value and the indiviudal's income gives the income test.
 #' @param partner_pensioner (logical, default: \code{TRUE}) Is the individual's partner also in receipt of the age pension?
 #' @param Date,fy.year The financial year. Currently only 2015-16 is supported (the most recent survey of income and housing results).
@@ -14,7 +14,8 @@
 #' 
 #' @details
 #' Currently does not include the age pension supplement.
-#' @return Returns the age pension payable for each individual defined by the arguments, assuming otherwise eligible.
+#' @return Returns the age pension payable for each individual defined by the 
+#' arguments, assuming otherwise eligible.
 #' 
 #' 
 #' 
@@ -36,6 +37,8 @@ age_pension <- function(fortnightly_income = 0,
                         is_home_owner = FALSE,
                         illness_separated_couple = FALSE,
                         per = c("year", "fortnight")) {
+  args <- ls(sorted = FALSE)  # sorted = FALSE => in order of args
+  
   if (is.null(Date)) {
     if (is.null(fy.year)) {
       Date <- .age_pension_today2qtr(Sys.Date())
@@ -46,6 +49,12 @@ age_pension <- function(fortnightly_income = 0,
   } else {
     if (!is.null(fy.year)) {
       warning("`fy.year` and `Date` both used. Ignoring `fy.year`.")
+    }
+  }
+  
+  for (i in args) {
+    if (anyNA(get(i, inherits = FALSE))) {
+      stop("`", i, "` contains NAs. Impute these values.")
     }
   }
   
@@ -70,7 +79,9 @@ age_pension <- function(fortnightly_income = 0,
                                         financial_assets,
                                         is_home_owner)
   
-  Income <- 
+  
+  
+  HH_Income <- 
     HasPartner <- 
     PartnerIncome <-
     Assets <- 
@@ -78,16 +89,17 @@ age_pension <- function(fortnightly_income = 0,
     IlnnessSeparated <- NULL
   
   input <- 
-    data.table(Income = annual_income, 
+    data.table(HH_Income = annual_income + partner_annual_income, 
                HasPartner = has_partner, 
                n_dependants = n_dependants,
-               PartnerIncome = partner_annual_income,
                PartnerPensioner = partner_pensioner,
                Date = as.Date(Date), 
                Assets = assets_value, 
                FinancialAssets = financial_assets,
                HomeOwner = is_home_owner,
                IllnessSeparated = illness_separated_couple)
+  
+  
   input[, "ordering" := .I]
   setkeyv(input, c("HasPartner", "Date"))
   
@@ -133,10 +145,10 @@ age_pension <- function(fortnightly_income = 0,
                    roll = Inf,
                    nomatch = 0L] 
   
+  
+  deeming_rate_above <- deemed_income <- FinancialAssets <- NULL
+  
   # http://guides.dss.gov.au/guide-social-security-law/4/4/1/10
-  deeming_rate_above <-
-    deemed_income <- 
-    FinancialAssets <- NULL
   deeming <- 
     Age_pension_deeming_rates_by_Date %>%
     # temp
@@ -164,21 +176,23 @@ age_pension <- function(fortnightly_income = 0,
   D[, deemed_income := deeming_rate_below * pminV(threshold, FinancialAssets)]
   D[FinancialAssets > threshold,
     deemed_income := deemed_income + deeming_rate_above * pmaxC(FinancialAssets - threshold, 0)]
-  D[, Income := Income + deemed_income]
+  D[, HH_Income := HH_Income + deemed_income]
   
   # if (is_testing())print(A); print(B); print(C)
   age_pension_income <-
     age_pension_assets <- 
     assets_test <- 
+    partner_test_reduction <-
     NULL
   
   out <- 
     D %>%
-    .[, age_pension_income := pminV(pmaxC(max_rate - 0.5 * (Income - permissible_income),
+    .[, partner_test_reduction := (-1/2 * HasPartner + 1)] %>% 
+    .[, age_pension_income := pminV(pmaxC(max_rate - partner_test_reduction * 0.5 * (HH_Income - (has_partner + 1) * permissible_income),
                                           0),
                                     max_rate)] %>%
     .[, assets_excess := pmaxC(Assets - assets_test, 0)] %>%
-    .[, age_pension_assets := pminV(pmaxC(max_rate - 19.5 * floor(assets_excess / 250), 0), max_rate)] %>%
+    .[, age_pension_assets := pminV(pmaxC(max_rate - partner_test_reduction * 19.5 * floor(assets_excess / 250), 0), max_rate)] %>%
     setorderv("ordering") %>%
     .[, pminV(age_pension_income, 
               age_pension_assets)]

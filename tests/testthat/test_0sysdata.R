@@ -1,9 +1,11 @@
 context("Data up-to-date")
 
 test_that("Data is up-to-date as documented", {
+  skip_if_not(is.na(Sys.getenv("R_GRATTAN_CHECK_UP_TO_DATE", unset = NA_character_)))
   skip_on_cran()
   # skip_on_travis()
   skip_on_appveyor()
+  skip_if_not(identical(.Platform$r_arch, "x64"))
   check_doc <- function(rd) {
     rd_lines <- readLines(rd, warn = FALSE)
     if (length(intrnl_data_line <- grep("internal data", rd_lines))) {
@@ -42,7 +44,7 @@ test_that("pkgdown up-to-date", {
   skip_on_appveyor()
   skip_if_not_installed("magrittr")
   skip_if_not(file.exists("test_0sysdata.R"))
-  
+  skip_if_not(dir.exists("../../docs"))  # if checking, this will be removed
   pkgdown_files <- dir("../../docs", recursive = TRUE, full.names = TRUE)
   
   expect_gt(length(pkgdown_files), 0)

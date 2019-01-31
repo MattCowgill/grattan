@@ -12,7 +12,8 @@ test_that("GNI returns known results", {
 })
 
 test_that("Error handling", {
-  expect_warning(gni_fy("2017-18"))
+  skip("All fys have full quarters in this release.")
+  expect_warning(gni_fy("2018-19"))
 })
 
 context("GDP")
@@ -20,7 +21,7 @@ context("GDP")
 test_that("GDP returns known results", {
   expect_equal(gdp_qtr("1989-12-02", roll = "nearest"),
                100576000000, 
-               tol = 0.1e9,
+               tol = 0.25e9,
                scale = 1)
   expect_equal(gdp_fy("1989-90"),
                404889000000,
@@ -29,5 +30,7 @@ test_that("GDP returns known results", {
 })
 
 test_that("Error handling", {
-  expect_warning(gdp_fy("2017-18"))
+  library(data.table)
+  skip("All fys have full quarters in this release.")
+  expect_warning(gdp_fy("2018-19"))
 })

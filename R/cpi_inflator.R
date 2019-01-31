@@ -8,7 +8,7 @@
 #' If both \code{from_fy} and \code{to_fy} are \code{NULL} (the default), \code{from_fy} is set to the previous financial year and \code{to_fy} to the current financial year, with a warning. Setting only one is an error.
 #' @param adjustment What CPI index to use ("none" = raw series, "seasonal", or "trimmed" [mean]).
 #' @param useABSConnection Should the function connect with ABS.Stat via an SDMX connection? If \code{FALSE} (the default), a pre-prepared index table is used. This is much faster and more reliable (in terms of errors), though of course relies on the package maintainer to keep the tables up-to-date. 
-#' The internal data was updated on 2018-08-17 to 2018-Q2. 
+#' The internal data was updated on 2018-11-12 to 2018-Q3. 
 #' If using \code{useABSConnection = TRUE}, ensure you have \code{rsdmx (>= 0.5-10)} up-to-date.
 #' @param allow.projection Should projections beyond the ABS's data be allowed?
 #' @param accelerate.above An integer setting the threshold for 'acceleration'. 
@@ -151,15 +151,15 @@ cpi_inflator <- function(from_nominal_price = 1,
   if (max_fy2yr(to_fy) > the_max.yr || 
       max_fy2yr(from_fy) > the_max.yr) {
     # Number of years beyond the data our forecast must reach
-    years.beyond <- max(fy2yr(to_fy)) - max(fy2yr(permitted_fys))
+    years.beyond <- max_fy2yr(to_fy) - max_fy2yr(permitted_fys)
     cpi_index_forecast <-
       cpi.indices %$%
       gforecast(obsValue, h = years.beyond) %$%
       as.numeric(mean)
     
     cpi.indices.new <- 
-      setDT(list(fy_year = yr2fy(seq(max(fy2yr(permitted_fys)) + 1L,
-                                     max(fy2yr(to_fy)),
+      setDT(list(fy_year = yr2fy(seq(max_fy2yr(permitted_fys) + 1L,
+                                     max_fy2yr(to_fy),
                                      by = 1L)),
                  obsValue = cpi_index_forecast))
     cpi.indices <-
@@ -173,7 +173,8 @@ cpi_inflator <- function(from_nominal_price = 1,
            to = to_fy,
            inflator_table = cpi.indices,
            index.col = "obsValue", 
-           time.col = "fy_year")
+           time.col = "fy_year",
+           max.length = max.length)
   
 }
 

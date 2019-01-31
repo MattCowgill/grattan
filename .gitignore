@@ -1,3 +1,9 @@
+vignettes/long-vignettes/issues/164.pptx
+Meta
+doc
+vignettes/long-vignettes/issues/153.tex
+vignettes/long-vignettes/issues/153.fn100
+vignettes/long-vignettes/issues/153-cache/
 # History files
 .Rhistory
 .Rapp.history
@@ -33,3 +39,4 @@ Roadmap\.pdf
 Roadmap\.tex
 vignettes/long-vignettes/budget-2018_cache/*
 vignettes/long-vignettes/compare-avg-tax-rates-2027-28-wage-assumptions.pptx
+.Renviron

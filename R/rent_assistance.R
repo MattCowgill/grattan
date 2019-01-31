@@ -1,8 +1,15 @@
 #' Rent assistance
 #' @description The rent assistance to each individual payable by financial year.
-#' @param fortnightly_rent The fortnightly rent paid by each individual. By default, infinity, so the maximum rent assistance is returned by default, since rent assistance is capped at a maximum rate.
-#' @param fy.year (character) The financial year over which rent assistance is to be calculated.
-#' When left as \code{NULL}, defaults to the user's financial year, unless \code{max_rate} and \code{min_rent} are both set. If \code{fy.year} is set, the annual payment is provided.
+#' @param fortnightly_rent The fortnightly rent paid by each individual. By 
+#' default, infinity, so the maximum rent assistance is returned by default, 
+#' since rent assistance is capped at a maximum rate. Note the criteria for board
+#'  and lodging which can be found at \url{http://guides.dss.gov.au/guide-social-security-law/3/8/1/70}
+#' @param per Specifies the timeframe in which payments will be made. Can either
+#'  take value "fortnight" or "annual".
+#' @param fy.year (character) The financial year over which rent assistance is 
+#' to be calculated. When left as \code{NULL}, defaults to the user's financial 
+#' year, unless \code{max_rate} and \code{min_rent} are both set. If 
+#' \code{fy.year} is set, the annual payment is provided.
 #' @param Date (Date vector or coercible to such) An alternative to \code{fy.year}.
 #'  If both \code{fy.year} and \code{Date} are provided, \code{fy.year} is ignored, with a warning. 
 #'  If \code{Date} is used, the fortnightly rent assistance is provided.
@@ -14,6 +21,12 @@
 #' the internal table.
 #' @param max_rate If not \code{NULL}, a numeric vector indicating for each individual the maximum rent assistance payable.
 #' @param min_rent If not \code{NULL}, a numeric vector indicating for each individual the minimum fortnightly rent above which rent assistance is payable. \code{max_rate} and \code{min_rent} must not be used when \code{fy.year} is set.
+#' 
+#' @param sharers_provision_applies (logical, default: FALSE) Does the sharers provision apply to the parent payment? The list of functions can be found in table 2 column 4 \url{http://guides.dss.gov.au/guide-social-security-law/3/8/1/10}
+#' @param is_homeowner (logical, default: \code{FALSE}) Does the individual own 
+#' their own home?
+#' @param lives_in_sharehouse (logical, default: \code{FALSE}) Does the individual
+#'  live in a sharehouse?
 #' 
 #' @return If \code{fy.year} is used, the annual rent assistance payable for each individual; 
 #' if \code{Date} is used, the \emph{fortnightly} rent assistance payable.
@@ -36,13 +49,17 @@
 #' @export
 
 rent_assistance <- function(fortnightly_rent = Inf,
+                            per = "fortnight",
                             fy.year = NULL,
                             Date = NULL,
                             n_dependants = 0L,
                             has_partner = FALSE,
                             .prop_rent_paid_by_RA = 0.75,
                             max_rate = NULL,
-                            min_rent = NULL) {
+                            min_rent = NULL,
+                            sharers_provision_applies = FALSE,
+                            is_homeowner = FALSE,
+                            lives_in_sharehouse = FALSE) {
   
   if (is.null(max_rate) && is.null(min_rent)) {
     if (is.null(Date)) {
@@ -102,16 +119,17 @@ rent_assistance <- function(fortnightly_rent = Inf,
         stop("`n_dependants` is type double and cannot be safely coerced to type integer.")
       }
       n_dependants <- as.integer(n_dependants)
-      n_dependants[n_dependants == 2L] <- 1L
-      n_dependants[n_dependants > 3L] <- 3L
     }
+    
+    n_dependants[n_dependants == 2L] <- 1L
+    n_dependants[n_dependants > 3L] <- 3L
     
     
     # Actual calculation:
     
     input <- 
       data.table(fy_year = fy.year %||% Date,
-                 HasPartner = has_partner,
+                 hasPartner = has_partner,
                  nDependants = n_dependants,
                  Rent = fortnightly_rent)
     
@@ -120,32 +138,30 @@ rent_assistance <- function(fortnightly_rent = Inf,
     if (is.null(fy.year)) {
       setnames(input, "fy_year", "Date")
       setkeyv(input,
-              c("HasPartner",
+              c("hasPartner",
                 "nDependants",
                 "Date"))
       
-      multiple <- 1
-      
       output <- 
         rent_assistance_rates_by_date[input,
-                                      on = c("HasPartner",
+                                      on = c("hasPartner",
                                              "nDependants",
                                              "Date"), 
                                       roll = -Inf]
     } else {
       setkeyv(input,
               c("fy_year",
-                "HasPartner",
+                "hasPartner",
                 "nDependants"))
-      
-      multiple <- 26
       
       output <- 
         rent_assistance_rates[input,
                               on = c("fy_year",
-                                     "HasPartner",
+                                     "hasPartner",
                                      "nDependants")]
     }
+    
+    Rent <- NULL
     
     ra <- 
       output %>%
@@ -153,7 +169,7 @@ rent_assistance <- function(fortnightly_rent = Inf,
                          max_rate)] %>%
       setorderv("ordering") %>%
       .subset2("out")
-    ra <- ra * multiple
+    
   } else {
     
     if (is.null(max_rate)) {
@@ -183,15 +199,50 @@ rent_assistance <- function(fortnightly_rent = Inf,
       stop("`min_rent` was set but was not numeric.")
     }
     
-    prohibit_vector_recycling(.prop_rent_paid_by_RA, 
-                              fortnightly_rent,
-                              min_rent,
-                              max_rate)
-    Rent <- fortnightly_rent
+    max.length <- 
+      prohibit_vector_recycling.MAXLENGTH(.prop_rent_paid_by_RA, 
+                                          fortnightly_rent,
+                                          min_rent,
+                                          max_rate)
     
-    ra <- pminV(.prop_rent_paid_by_RA * pmaxC(Rent - min_rent, 0),
-                max_rate)
+    input <- lapply(list(.prop_rent_paid_by_RA = .prop_rent_paid_by_RA, 
+                         Rent = fortnightly_rent,
+                         min_rent = min_rent,
+                         max_rate = max_rate), 
+                    rep_len, max.length)
+                      
+    setDT(input)
+    
+    ra <- input[, pminV(.prop_rent_paid_by_RA * pmax0(Rent - min_rent),
+                        max_rate)]
   }
   
-  return(ra)
+  # sharers provision
+  
+  prohibit_vector_recycling(sharers_provision_applies,
+                            is_homeowner,
+                            lives_in_sharehouse,
+                            has_partner,
+                            n_dependants)
+  
+  SharersProvisionApplies <- NULL
+  isHomeOwner <- NULL
+  ShareHouse <- NULL
+  hasPartner <- NULL
+  nDependants <- NULL
+  sharers_prov <- data.table(SharersProvisionApplies = sharers_provision_applies,
+                             isHomeOwner = is_homeowner,
+                             ShareHouse = lives_in_sharehouse,
+                             hasPartner = has_partner,
+                             nDependants = n_dependants)
+  
+  ra <- ra * (1 - 1/3 * sharers_prov[, SharersProvisionApplies &  
+                                       !isHomeOwner &
+                                       !hasPartner &
+                                       nDependants == 0 &
+                                       ShareHouse])
+  
+  # validate_per assumes yearly payments, however RA has fortnightly rates which is why it must be scaled by 26
+  
+  ra * 26 / validate_per(per, missing(per))
 }

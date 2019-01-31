@@ -9,7 +9,7 @@ test_that("Mising fy.year",{
 })
 
 test_that("SAPTO for singles", {
-  sapto(33279, fy.year = "2015-16")
+  expect_equal(sapto(33279, fy.year = "2015-16"), 2105)
 })
 
 test_that("Error handling", {
@@ -150,8 +150,7 @@ test_that("Works for ATO sample file", {
                      new_sapto_tbl = copy(grattan:::sapto_tbl)[fy_year == "2016-17"] %>% setkeyv("family_status"))
   tax_with_base_fn <- income_tax(s1314$Taxable_Income,
                                  fy.year = "2013-14",
-                                 .dots.ATO = copy(s1314),
-                                 age = if_else(s1314$age_range <= 1, 67, 42))
+                                 .dots.ATO = copy(s1314))
   
   expect_true(all(dplyr::near(tax_with_base_fn, tax_with_sapto_fn)))
   
