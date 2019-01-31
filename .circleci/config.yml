@@ -24,26 +24,26 @@ jobs:
           command: |
             Rscript -e "devtools::install_deps(dependencies = TRUE)"
       - run:
-          no_output_timeout: 20m
+          no_output_timeout: 10m
           command: |
             if [[ $CIRCLE_NODE_INDEX == "1" ]]; then Rscript -e 'dir.create("~/.R");file.create(mv <- "~/.R/Makevars");writeLines("CXXFLAGS=-O3", mv)'; fi
             if [[ $CIRCLE_NODE_INDEX == "1" ]]; then R CMD build --no-build-vignettes . ; fi
             if [[ $CIRCLE_NODE_INDEX == "1" ]]; then R CMD check --ignore-vignettes --no-vignettes *tar.gz ; fi
       - run:
-          no_output_timeout: 20m
+          no_output_timeout: 10m
           command: |
             if [[ $CIRCLE_NODE_INDEX == "2" ]]; then R CMD build --no-build-vignettes . ; fi
             if [[ $CIRCLE_NODE_INDEX == "2" ]]; then R CMD check --ignore-vignettes --no-vignettes *tar.gz ; fi
       - run:
-          no_output_timeout: 20m
+          no_output_timeout: 10m
           command: |
-            if [[ $CIRCLE_NODE_INDEX == "3" ]]; Rscript -e 'devtools::test()'';  fi
+            if [[ $CIRCLE_NODE_INDEX == "3" ]]; Rscript -e 'devtools::test()';  fi
       - save_cache:
           key: deps1-{{ .Branch }}-{{ checksum "DESCRIPTION" }}-{{ checksum ".circleci/config.yml" }}
           paths:
             - "/usr/local/lib/R/site-library"
       - run:
-          no_output_timeout: 20m
+          no_output_timeout: 10m
           command: |
             mkdir /root/main/artifacts
             if [[ $CIRCLE_NODE_INDEX == "0" ]]; then Rscript -e "devtools::install()" ; fi
