@@ -2,7 +2,9 @@ version: 2
 jobs:
   build:
     working_directory: ~/main
-    machine: true
+    docker:
+      - image: rocker/verse
+        
     steps:
       - checkout
       - run:
