@@ -7,10 +7,18 @@ jobs:
         
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - deps1-{{ .Branch }}-{{ checksum "DESCRIPTION" }}-{{ checksum ".circleci/config.yml" }}
+            - deps1-{{ .Branch }}
+            - deps1-
       - run:
           command: |
-            docker pull rocker/verse
-            docker run --rm -p 127.0.0.1:8787:8787 -e DISABLE_AUTH=true rocker/verse
             Rscript -e "devtools::install_deps(dependencies = TRUE)"
             R -e 'devtools::test(filter = "age_pension")'
             R -e 'devtools::check()'
+      - store_test_results:
+          path: ./grattan.Rcheck/tests
+      - store_artifacts:
+          path: /root/main/artifacts/
+          destination: artifacts
