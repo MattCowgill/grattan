@@ -7,11 +7,6 @@ jobs:
     parallelism: 4
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - deps1-{{ .Branch }}-{{ checksum "NAMESPACE" }}-{{ checksum ".circleci/config.yml" }}
-            - deps1-{{ .Branch }}
-            - deps1-
       - run:
           command: |
             docker pull rocker/verse
