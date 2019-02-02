@@ -10,6 +10,7 @@ jobs:
       - run:
           command: |
             docker pull rocker/verse
+            docker run -rm -ti rocker/verse
       - run:
           command: |
             Rscript -e "devtools::install_deps(dependencies = TRUE)"
